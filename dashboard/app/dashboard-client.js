@@ -56,7 +56,7 @@ export default function DashboardClient({ initialSites, initialEvents, initialSi
   async function refresh() {
     setRefreshing(true);
     try {
-      const response = await fetch('/api/dashboard', { cache: 'no-store' });
+      const response = await fetch(`/api/dashboard?_=${Date.now()}`, { cache: 'no-store', headers: { 'cache-control': 'no-cache' } });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Refresh failed.');
       setSites(payload.sites); setEvents(payload.events); setRefreshedAt(payload.refreshedAt);

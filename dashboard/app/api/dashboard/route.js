@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   const apiUrl = process.env.SITESHIELD_API_URL || 'http://127.0.0.1:4000';
@@ -10,7 +12,7 @@ export async function GET() {
     const headers = { authorization: `Bearer ${token}` };
     const [sitesResponse, eventsResponse] = await Promise.all([
       fetch(`${apiUrl}/v1/sites`, { headers, cache: 'no-store', signal: AbortSignal.timeout(5000) }),
-      fetch(`${apiUrl}/v1/events?limit=100`, { headers, cache: 'no-store', signal: AbortSignal.timeout(5000) }),
+      fetch(`${apiUrl}/v1/events?limit=100&_=${Date.now()}`, { headers, cache: 'no-store', signal: AbortSignal.timeout(5000) }),
     ]);
     if (!sitesResponse.ok || !eventsResponse.ok) return NextResponse.json({ error: 'Central API returned an error while refreshing.' }, { status: 502 });
     const [sites, events] = await Promise.all([sitesResponse.json(), eventsResponse.json()]);
