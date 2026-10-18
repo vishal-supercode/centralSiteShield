@@ -8,6 +8,8 @@ export interface EventStore {
   findSiteByKey(key: string): Promise<Site | undefined>;
   saveEvents(events: SecurityEvent[]): Promise<{ accepted: number; duplicates: number }>;
   listEvents(limit: number, siteId?: string): Promise<SecurityEvent[]>;
+  deleteEvents(siteId: string): Promise<number>;
+  deleteSite(siteId: string): Promise<boolean>;
 }
 
 const hashKey = (key: string) => createHash('sha256').update(key).digest('hex');
@@ -34,5 +36,17 @@ export class MemoryEventStore implements EventStore {
   }
   async listEvents(limit: number, siteId?: string) {
     return [...this.events.values()].filter((event) => !siteId || event.siteId === siteId).sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, limit);
+  }
+  async deleteEvents(siteId: string) {
+    let deleted = 0;
+    for (const [id, event] of this.events) if (event.siteId === siteId) { this.events.delete(id); deleted++; }
+    return deleted;
+  }
+  async deleteSite(siteId: string) {
+    const index = this.sites.findIndex((site) => site.id === siteId);
+    if (index < 0) return false;
+    this.sites.splice(index, 1);
+    await this.deleteEvents(siteId);
+    return true;
   }
 }

@@ -1,0 +1,63 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+
+const tabs = [
+  ['all', 'All events'], ['block', 'Blocked'], ['limit', 'Rate limited'], ['monitor', 'Monitor'],
+];
+
+export function CopyButton({ value, label = 'Copy' }) {
+  const [state, setState] = useState('idle');
+  async function copy() {
+    try { await navigator.clipboard.writeText(value); setState('copied'); setTimeout(() => setState('idle'), 1800); }
+    catch { setState('failed'); setTimeout(() => setState('idle'), 2500); }
+  }
+  return <button type="button" className={state === 'copied' ? 'button button-success' : 'button button-secondary'} onClick={copy}>{state === 'copied' ? '✓ Copied' : state === 'failed' ? 'Copy failed' : label}</button>;
+}
+
+function ConfirmAction({ site, action, onComplete }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const isSite = action === 'site';
+  async function run() {
+    setBusy(true); setError('');
+    try {
+      const response = await fetch(`/api/sites/${site.id}?action=${action === 'logs' ? 'logs' : 'site'}`, { method: 'DELETE' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Action failed.');
+      setConfirming(false); onComplete(site.id, action);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Action failed.'); }
+    finally { setBusy(false); }
+  }
+  if (!confirming) return <button type="button" className={isSite ? 'button button-danger' : 'button button-quiet'} onClick={() => setConfirming(true)}>{isSite ? 'Delete site' : 'Delete logs'}</button>;
+  return <span className="confirm-actions"><span className="confirm-label">{isSite ? 'Delete site and all logs?' : 'Delete all logs?'}</span><button type="button" className="button button-danger" onClick={run} disabled={busy}>{busy ? 'Deleting…' : 'Confirm'}</button><button type="button" className="button button-secondary" onClick={() => setConfirming(false)} disabled={busy}>Cancel</button>{error && <span className="inline-error">{error}</span>}</span>;
+}
+
+export default function DashboardClient({ initialSites, initialEvents, initialSiteFilter = 'all' }) {
+  const [sites, setSites] = useState(initialSites);
+  const [events, setEvents] = useState(initialEvents);
+  const [activeTab, setActiveTab] = useState('all');
+  const [siteFilter, setSiteFilter] = useState(initialSiteFilter);
+  const [notice, setNotice] = useState('');
+  const filtered = useMemo(() => events.filter((event) => (siteFilter === 'all' || event.siteId === siteFilter) && (activeTab === 'all' || event.decision === activeTab)), [events, siteFilter, activeTab]);
+  const counts = useMemo(() => {
+    const scoped = events.filter((event) => siteFilter === 'all' || event.siteId === siteFilter);
+    return { all: scoped.length, block: scoped.filter((e) => e.decision === 'block').length, limit: scoped.filter((e) => e.decision === 'limit').length, monitor: scoped.filter((e) => e.decision === 'monitor').length };
+  }, [events, siteFilter]);
+  const names = useMemo(() => new Map(sites.map((site) => [site.id, site.name])), [sites]);
+  function complete(siteId, action) {
+    if (action === 'site') { setSites((current) => current.filter((site) => site.id !== siteId)); setEvents((current) => current.filter((event) => event.siteId !== siteId)); if (siteFilter === siteId) setSiteFilter('all'); setNotice('Site and its logs were deleted.'); }
+    else { setEvents((current) => current.filter((event) => event.siteId !== siteId)); setNotice('Site logs were deleted.'); }
+    setTimeout(() => setNotice(''), 3000);
+  }
+  return <>
+    {notice && <div className="toast" role="status">✓ {notice}</div>}
+    <section className="toolbar-section">
+      <div className="section-heading"><div><p className="eyebrow">Activity</p><h2>Security events</h2></div><select className="site-select" value={siteFilter} onChange={(event) => setSiteFilter(event.target.value)}><option value="all">All sites</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}</select></div>
+      <div className="tabs" role="tablist">{tabs.map(([key, label]) => <button type="button" role="tab" aria-selected={activeTab === key} className={activeTab === key ? 'tab active' : 'tab'} key={key} onClick={() => setActiveTab(key)}>{label}<span>{counts[key]}</span></button>)}</div>
+      {filtered.length === 0 ? <p className="empty-state">No events match this filter.</p> : <div className="table-wrap"><table><thead><tr><th>Time</th><th>Site</th><th>Decision</th><th>Request</th><th>Source hash</th><th>Reason</th></tr></thead><tbody>{filtered.map((event) => <tr key={event.id}><td>{new Date(event.timestamp).toLocaleString()}</td><td>{names.get(event.siteId) || event.siteId}</td><td><span className={`badge badge-${event.decision}`}>{event.decision}</span></td><td><code>{event.request.method} {event.request.path}</code></td><td><code>{event.request.ip}</code></td><td>{event.reasons.join(', ') || '—'}</td></tr>)}</tbody></table></div>}
+    </section>
+    <section><div className="section-heading"><div><p className="eyebrow">Configuration</p><h2>Registered sites</h2></div><span className="muted">{sites.length} connected</span></div>{sites.length === 0 ? <p className="empty-state">No sites registered yet.</p> : <div className="site-grid">{sites.map((site) => <article className="site-card" key={site.id}><div className="site-card-top"><div><h3>{site.name}</h3><a href={site.origin} target="_blank" rel="noreferrer">{site.origin}</a></div><span className="site-dot" /></div><p className="site-id-label">Site ID</p><div className="copy-line"><code>{site.id}</code><CopyButton value={site.id} label="Copy ID" /></div><div className="site-actions"><ConfirmAction site={site} action="logs" onComplete={complete} /><ConfirmAction site={site} action="site" onComplete={complete} /></div></article>)}</div>}</section>
+  </>;
+}

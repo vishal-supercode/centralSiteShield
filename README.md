@@ -33,6 +33,8 @@ The service binds to `127.0.0.1:4000` by default. `.env` has local-development-o
 | `POST /v1/events` | `X-SiteShield-Key` | Single-event compatibility for the older package reporter |
 | `GET /v1/sites` | Admin bearer token | List sites without exposing site keys |
 | `GET /v1/events` | Admin bearer token | Read recent events for the dashboard |
+| `DELETE /v1/sites/:siteId/events` | Admin bearer token | Delete all event logs for one site |
+| `DELETE /v1/sites/:siteId` | Admin bearer token | Delete a site and its event logs |
 
 The batch reporter sends `{ "events": [...] }`. The request rate setting counts HTTP batch requests per site per 60-second Redis bucket—not individual events. `EVENT_BATCH_MAX` limits events per batch and `EVENT_BODY_LIMIT_BYTES` caps request size. PostgreSQL handles idempotency through the event UUID primary key. Redis is used for ephemeral ingestion limits; PostgreSQL is the durable event store.
 

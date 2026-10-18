@@ -40,6 +40,14 @@ export class PostgresEventStore implements EventStore {
       WHERE ($2::text IS NULL OR site_id=$2) ORDER BY occurred_at DESC LIMIT $1`, [limit, siteId ?? null]);
     return result.rows.map((row) => ({ id: row.id, siteId: row.site_id, timestamp: new Date(row.occurred_at).toISOString(), decision: row.decision, score: row.score, reasons: row.reasons, request: row.request, counters: row.counters })) as SecurityEvent[];
   }
+  async deleteEvents(siteId: string) {
+    const result = await this.pool.query('DELETE FROM security_events WHERE site_id=$1', [siteId]);
+    return result.rowCount ?? 0;
+  }
+  async deleteSite(siteId: string) {
+    const result = await this.pool.query('DELETE FROM sites WHERE id=$1', [siteId]);
+    return (result.rowCount ?? 0) > 0;
+  }
 }
 function mapSite(row: Record<string, unknown>): Site {
   return { id: String(row.id), name: String(row.name), origin: String(row.origin), apiKeyHash: String(row.api_key_hash), createdAt: new Date(String(row.created_at)).toISOString() };

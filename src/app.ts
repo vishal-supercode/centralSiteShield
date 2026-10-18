@@ -61,6 +61,18 @@ export function createApp(options: { store: EventStore; limiter: IngestionLimite
     const siteId = typeof req.query.siteId === 'string' ? req.query.siteId : undefined;
     return res.json({ events: await options.store.listEvents(limit, siteId) });
   });
+  app.delete('/v1/sites/:siteId/events', admin, async (req, res) => {
+    const siteId = typeof req.params.siteId === 'string' ? req.params.siteId : '';
+    if (!/^site_[a-f0-9]{16}$/.test(siteId)) return res.status(400).json({ error: 'invalid site id' });
+    return res.json({ deleted: await options.store.deleteEvents(siteId), siteId });
+  });
+  app.delete('/v1/sites/:siteId', admin, async (req, res) => {
+    const siteId = typeof req.params.siteId === 'string' ? req.params.siteId : '';
+    if (!/^site_[a-f0-9]{16}$/.test(siteId)) return res.status(400).json({ error: 'invalid site id' });
+    const deleted = await options.store.deleteSite(siteId);
+    if (!deleted) return res.status(404).json({ error: 'site not found' });
+    return res.json({ deleted: true, siteId });
+  });
   app.use((_req, res) => res.status(404).json({ error: 'route not found' }));
   app.use((error: { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
     const status = error.status === 413 ? 413 : error.status === 400 ? 400 : 500;

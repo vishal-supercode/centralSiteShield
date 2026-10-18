@@ -14,7 +14,7 @@ async function listen(app: ReturnType<typeof createApp>) {
 }
 const auth = { authorization: 'Bearer admin-test' };
 function event(siteId: string, id = '00000000-0000-4000-8000-000000000001') {
-  return { id, siteId, timestamp: new Date().toISOString(), request: { siteId, ip: '203.0.113.4', method: 'GET', path: '/api/test' }, decision: 'block', score: 5, reasons: ['request rate exceeded'], counters: { requests: 10, loginAttempts: 0 } };
+  return { id, siteId, timestamp: new Date().toISOString(), request: { siteId, ip: '203.0.113.4', method: 'GET', path: '/api/test' }, decision: 'block' as const, score: 5, reasons: ['request rate exceeded'], counters: { requests: 10, loginAttempts: 0 } };
 }
 
 test('batch endpoint authenticates sites, validates events and persists idempotently', async () => {
@@ -73,5 +73,27 @@ test('ingestion limiter returns 429 after its per-site quota', async () => {
     now += 60_001;
     const third = await fetch(`${base}/v1/events/batch`, { method: 'POST', headers, body: JSON.stringify({ events: [event(created.site.id, '00000000-0000-4000-8000-000000000003')] }) });
     assert.equal(third.status, 202);
+  } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('admin can delete one site’s logs or delete the site and cascade its events', async () => {
+  const store = new MemoryEventStore();
+  const app = createApp({ store, limiter: new MemoryIngestionLimiter(100), adminToken: 'admin-test', ipHashSecret: 'test-secret-at-least-32-characters-long', maxBatch: 10, bodyLimitBytes: 100_000 });
+  const { server, base } = await listen(app);
+  try {
+    const first = await store.registerSite({ name: 'First', origin: 'https://first.example' });
+    const second = await store.registerSite({ name: 'Second', origin: 'https://second.example' });
+    await store.saveEvents([event(first.site.id), event(second.site.id, '00000000-0000-4000-8000-000000000002')]);
+    const noAuth = await fetch(`${base}/v1/sites/${first.site.id}/events`, { method: 'DELETE' });
+    assert.equal(noAuth.status, 401);
+    const clearLogs = await fetch(`${base}/v1/sites/${first.site.id}/events`, { method: 'DELETE', headers: auth });
+    assert.deepEqual(await clearLogs.json(), { deleted: 1, siteId: first.site.id });
+    assert.equal((await store.listEvents(10)).length, 1);
+    const deleteSite = await fetch(`${base}/v1/sites/${second.site.id}`, { method: 'DELETE', headers: auth });
+    assert.equal(deleteSite.status, 200);
+    assert.equal((await store.listSites()).length, 1);
+    assert.equal((await store.listEvents(10)).length, 0);
+    const invalid = await fetch(`${base}/v1/sites/invalid/events`, { method: 'DELETE', headers: auth });
+    assert.equal(invalid.status, 400);
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
