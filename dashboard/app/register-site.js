@@ -31,6 +31,7 @@ export default function RegisterSite() {
     ? `  // Local demonstration only. Never use this fixed IP in production.\n  getClientIp: () => '127.0.0.1',`
     : `  // Replace with a client-IP value sanitized by your hosting proxy.\n  getClientIp: (request) => request.headers.get('x-company-client-ip') ?? undefined,`;
   const integrationSnippet = result ? `import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
+import { createGooglebotVerifier } from 'siteshield/crawlers';
 import { createBatchApiEventReporter, createNextShield } from 'siteshield/next';
 
 const reporter = createBatchApiEventReporter({
@@ -42,7 +43,14 @@ const reporter = createBatchApiEventReporter({
 
 const shield = createNextShield({
   siteId: '${result.site.id}',
-  policy: { mode: 'monitor', maxRequests: 30, windowMs: 60_000 },
+  policy: {
+    mode: 'monitor',
+    maxRequests: 30,
+    windowMs: 60_000,
+    // Only verified Google crawlers get the public GET/HEAD exemption.
+    // Login, admin, and mutation requests remain protected.
+    trustedCrawler: createGooglebotVerifier(),
+  },
 ${ipResolver}
   eventReporter: reporter,
 });
