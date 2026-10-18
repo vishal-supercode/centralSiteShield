@@ -1,0 +1,7 @@
+import './globals.css';
+
+export const metadata = { title: 'SiteShield | Security reports', description: 'SiteShield security events dashboard' };
+
+export default function RootLayout({ children }) {
+  return <html lang="en"><body>{children}</body></html>;
+}

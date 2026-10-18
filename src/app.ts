@@ -1,0 +1,75 @@
+import express, { type NextFunction, type Request, type Response } from 'express';
+import { timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
+import { batchSchema, newSiteSchema, securityEventSchema } from './contracts.js';
+import type { EventStore } from './store.js';
+import type { IngestionLimiter } from './rate-limiter.js';
+
+export function createApp(options: { store: EventStore; limiter: IngestionLimiter; adminToken: string; ipHashSecret: string; maxBatch: number; bodyLimitBytes: number }) {
+  if (!options.adminToken.trim()) throw new Error('SITESHIELD_ADMIN_TOKEN is required');
+  if (options.ipHashSecret.length < 32) throw new Error('EVENT_IP_HASH_SECRET must be at least 32 characters');
+  const app = express();
+  app.disable('x-powered-by');
+  app.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+  app.use(express.json({ limit: options.bodyLimitBytes }));
+  const admin = (req: Request, res: Response, next: NextFunction) => {
+    if (!safeEqual(req.header('authorization') ?? '', `Bearer ${options.adminToken}`)) return res.status(401).json({ error: 'admin authentication required' });
+    next();
+  };
+  app.get('/health', (_req, res) => res.json({ ok: true, service: 'siteshield-central' }));
+  app.post('/v1/sites', admin, async (req, res) => {
+    const parsed = newSiteSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid site', details: parsed.error.issues });
+    const registered = await options.store.registerSite(parsed.data);
+    const { apiKeyHash: _hash, ...site } = registered.site;
+    return res.status(201).json({ site, apiKey: registered.apiKey });
+  });
+  app.get('/v1/sites', admin, async (_req, res) => {
+    const sites = await options.store.listSites();
+    return res.json({ sites: sites.map(({ apiKeyHash: _hash, ...site }) => site) });
+  });
+  const ingest = async (req: Request, res: Response, events: unknown[]) => {
+    const key = req.header('x-siteshield-key');
+    if (!key) return res.status(401).json({ error: 'site authentication required' });
+    const site = await options.store.findSiteByKey(key);
+    if (!site) return res.status(401).json({ error: 'site authentication required' });
+    const parsed = batchSchema.safeParse({ events });
+    if (!parsed.success) return res.status(400).json({ error: 'invalid event batch', details: parsed.error.issues });
+    if (parsed.data.events.length > options.maxBatch) return res.status(413).json({ error: 'batch limit exceeded', maxEvents: options.maxBatch });
+    if (parsed.data.events.some((event) => event.siteId !== site.id)) return res.status(403).json({ error: 'event belongs to a different site' });
+    if (!(await options.limiter.consume(site.id))) return res.set('Retry-After', '60').status(429).json({ error: 'ingestion rate limit exceeded' });
+    const privacySafeEvents = parsed.data.events.map((event) => ({
+      ...event,
+      request: { ...event.request, ip: `sha256:${createHmac('sha256', options.ipHashSecret).update(event.request.ip).digest('hex')}` },
+    }));
+    const result = await options.store.saveEvents(privacySafeEvents);
+    return res.status(202).json({ ...result, received: parsed.data.events.length });
+  };
+  app.post('/v1/events/batch', async (req, res) => {
+    const parsed = batchSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid event batch', details: parsed.error.issues });
+    return ingest(req, res, parsed.data.events);
+  });
+  // Compatibility for package versions that report one event per request.
+  app.post('/v1/events', async (req, res) => {
+    const parsed = securityEventSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid security event', details: parsed.error.issues });
+    return ingest(req, res, [parsed.data]);
+  });
+  app.get('/v1/events', admin, async (req, res) => {
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
+    const siteId = typeof req.query.siteId === 'string' ? req.query.siteId : undefined;
+    return res.json({ events: await options.store.listEvents(limit, siteId) });
+  });
+  app.use((_req, res) => res.status(404).json({ error: 'route not found' }));
+  app.use((error: { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
+    const status = error.status === 413 ? 413 : error.status === 400 ? 400 : 500;
+    return res.status(status).json({ error: status === 413 ? 'request body too large' : status === 400 ? 'invalid JSON body' : 'internal server error' });
+  });
+  return app;
+}
+
+function safeEqual(a: string, b: string) {
+  const left = Buffer.from(a); const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}

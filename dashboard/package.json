@@ -1,0 +1,7 @@
+{
+  "name": "siteshield-dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "next dev --hostname 127.0.0.1 --port 3001", "build": "next build", "start": "next start --hostname 127.0.0.1 --port 3001" },
+  "dependencies": { "next": "^16.4.2", "react": "^19.2.0", "react-dom": "^19.2.0" }
+}
