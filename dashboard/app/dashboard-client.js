@@ -40,6 +40,8 @@ export default function DashboardClient({ initialSites, initialEvents, initialSi
   const [activeTab, setActiveTab] = useState('all');
   const [siteFilter, setSiteFilter] = useState(initialSiteFilter);
   const [notice, setNotice] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshedAt, setRefreshedAt] = useState(null);
   const filtered = useMemo(() => events.filter((event) => (siteFilter === 'all' || event.siteId === siteFilter) && (activeTab === 'all' || event.decision === activeTab)), [events, siteFilter, activeTab]);
   const counts = useMemo(() => {
     const scoped = events.filter((event) => siteFilter === 'all' || event.siteId === siteFilter);
@@ -51,10 +53,24 @@ export default function DashboardClient({ initialSites, initialEvents, initialSi
     else { setEvents((current) => current.filter((event) => event.siteId !== siteId)); setNotice('Site logs were deleted.'); }
     setTimeout(() => setNotice(''), 3000);
   }
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      const response = await fetch('/api/dashboard', { cache: 'no-store' });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Refresh failed.');
+      setSites(payload.sites); setEvents(payload.events); setRefreshedAt(payload.refreshedAt);
+      setNotice('Dashboard refreshed from the central service.');
+      setTimeout(() => setNotice(''), 3000);
+    } catch (cause) {
+      setNotice(cause instanceof Error ? cause.message : 'Refresh failed.');
+      setTimeout(() => setNotice(''), 4000);
+    } finally { setRefreshing(false); }
+  }
   return <>
     {notice && <div className="toast" role="status">✓ {notice}</div>}
     <section className="toolbar-section">
-      <div className="section-heading"><div><p className="eyebrow">Activity</p><h2>Security events</h2></div><select className="site-select" value={siteFilter} onChange={(event) => setSiteFilter(event.target.value)}><option value="all">All sites</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}</select></div>
+      <div className="section-heading"><div><p className="eyebrow">Activity</p><h2>Security events</h2>{refreshedAt && <p className="muted refresh-time">Last refreshed {new Date(refreshedAt).toLocaleTimeString()}</p>}</div><div className="toolbar-actions"><select className="site-select" value={siteFilter} onChange={(event) => setSiteFilter(event.target.value)}><option value="all">All sites</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}</select><button type="button" className="button button-primary" onClick={refresh} disabled={refreshing}>{refreshing ? 'Refreshing…' : '↻ Refresh'}</button></div></div>
       <div className="tabs" role="tablist">{tabs.map(([key, label]) => <button type="button" role="tab" aria-selected={activeTab === key} className={activeTab === key ? 'tab active' : 'tab'} key={key} onClick={() => setActiveTab(key)}>{label}<span>{counts[key]}</span></button>)}</div>
       {filtered.length === 0 ? <p className="empty-state">No events match this filter.</p> : <div className="table-wrap"><table><thead><tr><th>Time</th><th>Site</th><th>Decision</th><th>Request</th><th>Source hash</th><th>Reason</th></tr></thead><tbody>{filtered.map((event) => <tr key={event.id}><td>{new Date(event.timestamp).toLocaleString()}</td><td>{names.get(event.siteId) || event.siteId}</td><td><span className={`badge badge-${event.decision}`}>{event.decision}</span></td><td><code>{event.request.method} {event.request.path}</code></td><td><code>{event.request.ip}</code></td><td>{event.reasons.join(', ') || '—'}</td></tr>)}</tbody></table></div>}
     </section>
