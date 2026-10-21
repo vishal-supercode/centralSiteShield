@@ -40,14 +40,13 @@ export default function RegisterSite() {
   const envSnippet = result
     ? `SITESHIELD_API_URL=${result.apiUrl}\nSITESHIELD_SITE_KEY=${result.apiKey}`
     : "";
-  const localDemo =
-    result &&
-    ["localhost", "127.0.0.1", "[::1]"].includes(
-      new URL(result.site.origin).hostname,
-    );
-  const ipResolver = localDemo
-    ? `  // Local demonstration only. Never use this fixed IP in production.\n  getClientIp: () => '127.0.0.1',`
-    : `  // Replace with a client-IP value sanitized by your hosting proxy.\n  getClientIp: (request) => request.headers.get('x-company-client-ip') ?? undefined,`;
+  const ipResolver = `  // Local development uses loopback; production reads the client IP from the hosting proxy.
+  getClientIp: (request) => {
+    if (process.env.NODE_ENV !== 'production') return '127.0.0.1';
+    const realIp = request.headers.get('x-real-ip')?.trim();
+    if (realIp) return realIp;
+    return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  },`;
   const integrationSnippet = result
     ? `import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 import { createGooglebotVerifier } from 'siteshield/crawlers';
