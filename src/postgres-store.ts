@@ -30,7 +30,9 @@ export class PostgresEventStore implements EventStore {
   }
   async listIpRules(siteId: string) {
     const result = await this.pool.query(
-      "SELECT id,site_id,ip::text,type,source,created_at FROM site_ip_rules WHERE site_id=$1 ORDER BY created_at ASC",
+      // These rows are individual addresses, not network ranges. `inet::text`
+      // includes /32 or /128 and will not match the plain IP seen by the shield.
+      "SELECT id,site_id,host(ip) AS ip,type,source,created_at FROM site_ip_rules WHERE site_id=$1 ORDER BY created_at ASC",
       [siteId],
     );
     return result.rows.map(mapIpRule);
