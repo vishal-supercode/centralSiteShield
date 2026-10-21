@@ -97,6 +97,49 @@ function ConfirmAction({ site, action, onComplete }) {
   );
 }
 
+function downloadSiteEventsCsv(events, siteName, siteId) {
+  const columns = [
+    ["Time", (event) => event.timestamp],
+    ["Site", () => siteName],
+    ["Decision", (event) => event.decision],
+    ["Method", (event) => event.request?.method],
+    ["Path", (event) => event.request?.path],
+    ["Source hash", (event) => event.request?.ip],
+    ["Reasons", (event) => (event.reasons || []).join("; ")],
+  ];
+  const escapeCsv = (value) => {
+    const text = value == null ? "" : String(value);
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+  const rows = [
+    columns.map(([heading]) => escapeCsv(heading)).join(","),
+    ...events.map((event) =>
+      columns
+        .map(([, getValue]) => {
+          const value = getValue(event);
+          if (value === event.timestamp) {
+            const date = new Date(value);
+            return escapeCsv(Number.isNaN(date.getTime()) ? value : date.toISOString());
+          }
+          return escapeCsv(value);
+        })
+        .join(","),
+    ),
+  ];
+  const blob = new Blob(["\\uFEFF", rows.join("\\r\\n")], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  const safeName = (siteName || siteId).replace(/[^a-z0-9_-]+/gi, "-");
+  anchor.href = url;
+  anchor.download = `siteshield-${safeName}-events.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function DashboardClient({
   initialSites,
   initialEvents,
@@ -194,6 +237,21 @@ export default function DashboardClient({
             )}
           </div>
           <div className="toolbar-actions">
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() => {
+                const siteEvents = events.filter((event) => event.siteId === siteFilter);
+                const selectedSite = sites.find((site) => site.id === siteFilter);
+                if (selectedSite) {
+                  downloadSiteEventsCsv(siteEvents, selectedSite.name, selectedSite.id);
+                }
+              }}
+              disabled={siteFilter === "all" || !sites.some((site) => site.id === siteFilter)}
+              title={siteFilter === "all" ? "Select an individual site to export its events." : "Download this site's events as CSV"}
+            >
+              ↓ Download CSV
+            </button>
             <select
               className="site-select"
               value={siteFilter}
