@@ -273,7 +273,7 @@ export default function DashboardClient({
             </table>
           </div>
         )}
-      </section>
+      </section>}
       {showSites && <section>
         <div className="section-heading">
           <div>
