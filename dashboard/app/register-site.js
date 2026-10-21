@@ -7,11 +7,13 @@ export default function RegisterSite() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [setupTab, setSetupTab] = useState("env");
 
   async function submit(event) {
     event.preventDefault();
     setError("");
     setResult(null);
+    setSetupTab("env");
     setBusy(true);
     const form = event.currentTarget;
     try {
@@ -91,12 +93,19 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
     : "";
 
   return (
-    <section id="register-site">
-      <h2>Register a site</h2>
-      <p>
-        Add the site origin used by the application. The generated key is shown
-        once; copy it to your project’s server-side environment variables.
-      </p>
+    <section id="register-site" className="register-panel">
+      <div className="register-intro">
+        <div>
+          <p className="eyebrow">Site management</p>
+          <h2>Register a site</h2>
+          <p className="muted">
+            Connect an application to SiteShield and get the setup values for its
+            server-side environment and Next.js proxy.
+          </p>
+        </div>
+        <span className="register-intro-icon" aria-hidden="true">＋</span>
+      </div>
+
       <form onSubmit={submit} className="register-form">
         <label>
           Site name
@@ -116,48 +125,119 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
             placeholder="https://www.example.com"
           />
         </label>
-        <button type="submit" className="button button-primary" disabled={busy}>
+        <button type="submit" className="button button-primary register-submit" disabled={busy}>
           {busy ? "Registering…" : "Register site"}
         </button>
       </form>
-      {error && <p role="alert">{error}</p>}
+
+      {error && <p className="register-error" role="alert">{error}</p>}
+
       {result && (
-        <div className="setup-result" aria-live="polite">
-          <div className="result-heading">
+        <div className="setup-result setup-workspace" aria-live="polite">
+          <div className="setup-success-banner">
+            <span className="success-mark" aria-hidden="true">✓</span>
             <div>
-              <p className="eyebrow">Setup complete</p>
-              <h3>Site registered — save this key now</h3>
+              <p className="eyebrow">Registration successful</p>
+              <h3>Your site is ready to configure</h3>
+              <p className="muted">Follow the steps below to connect your application.</p>
             </div>
-            <span className="success-mark">✓</span>
           </div>
-          <p>Site key (shown only once):</p>
-          <code className="secret-key">{result.apiKey}</code>
-          <CopyButton value={result.apiKey} label="Copy site key" />
-          <p className="setup-warning">
-            This credential is shown only once. Keep it on the server and never
-            use <code>NEXT_PUBLIC_</code>.
-          </p>
-          <div className="setup-meta">
+
+          <div className="setup-credential-card">
+            <div className="setup-card-heading">
+              <div>
+                <span className="setup-step">SECURITY KEY</span>
+                <h4>Site key</h4>
+                <p>Keep this private. It belongs in server-side environment variables only.</p>
+              </div>
+              <span className="setup-lock" aria-hidden="true">⌑</span>
+            </div>
+            <code className="secret-key">{result.apiKey}</code>
+            <div className="setup-key-actions">
+              <CopyButton value={result.apiKey} label="Copy site key" />
+              <span className="setup-private-note">Private credential · shown once</span>
+            </div>
+          </div>
+
+          <div className="setup-site-id">
             <div>
-              <span>Site ID</span>
+              <span className="setup-step">SITE ID</span>
               <code>{result.site.id}</code>
             </div>
-            <CopyButton value={result.site.id} label="Copy site ID" />
+            <CopyButton value={result.site.id} label="Copy ID" />
           </div>
-          <h3>Environment values</h3>
-          <pre>{envSnippet}</pre>
-          <CopyButton value={envSnippet} label="Copy environment values" />
-          <h3>Next.js integration example</h3>
-          <p>
-            Save this file at <code>src/proxy.ts</code> in the customer’s
-            Next.js project. Install <code>siteshield</code>, add the
-            environment values, and start in monitor mode.
-          </p>
-          <p className="file-location">
-            <code>src/proxy.ts</code> <span>← create or replace this file</span>
-          </p>
-          <pre>{integrationSnippet}</pre>
-          <CopyButton value={integrationSnippet} label="Copy proxy.ts" />
+
+          <div className="setup-guide-heading">
+            <div>
+              <p className="eyebrow">Next steps</p>
+              <h3>Finish your integration</h3>
+            </div>
+            <span className="setup-guide-count">2 steps</span>
+          </div>
+
+          <div className="setup-tabs" role="tablist" aria-label="Site setup instructions">
+            <button
+              type="button"
+              role="tab"
+              id="setup-tab-env"
+              aria-selected={setupTab === "env"}
+              aria-controls="setup-panel"
+              className={setupTab === "env" ? "setup-tab active" : "setup-tab"}
+              onClick={() => setSetupTab("env")}
+            >
+              <span className="setup-tab-number">1</span>
+              <span><strong>Environment</strong><small>Add your credentials</small></span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="setup-tab-proxy"
+              aria-selected={setupTab === "proxy"}
+              aria-controls="setup-panel"
+              className={setupTab === "proxy" ? "setup-tab active" : "setup-tab"}
+              onClick={() => setSetupTab("proxy")}
+            >
+              <span className="setup-tab-number">2</span>
+              <span><strong>Next.js proxy</strong><small>Connect the protection layer</small></span>
+            </button>
+          </div>
+
+          <div className="setup-instruction-panel" id="setup-panel" role="tabpanel" aria-labelledby={setupTab === "env" ? "setup-tab-env" : "setup-tab-proxy"}>
+            {setupTab === "env" ? (
+              <>
+                <div className="setup-panel-heading">
+                  <div>
+                    <h4>Add environment values</h4>
+                    <p>Paste these into the server-side <code>.env</code> file at your project root.</p>
+                  </div>
+                  <CopyButton value={envSnippet} label="Copy values" />
+                </div>
+                <pre className="setup-code">{envSnippet}</pre>
+                <p className="setup-tip"><span aria-hidden="true">ⓘ</span> Do not prefix these variables with <code>NEXT_PUBLIC_</code> or commit your <code>.env</code> file.</p>
+                <div className="setup-panel-footer">
+                  <span>Environment configured?</span>
+                  <button type="button" className="button button-primary" onClick={() => setSetupTab("proxy")}>Next: proxy setup <span aria-hidden="true">→</span></button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="setup-panel-heading">
+                  <div>
+                    <h4>Configure Next.js proxy</h4>
+                    <p>Create or replace <code>src/proxy.ts</code> in your Next.js project.</p>
+                  </div>
+                  <CopyButton value={integrationSnippet} label="Copy proxy.ts" />
+                </div>
+                <div className="setup-file-label"><span className="setup-file-icon" aria-hidden="true">TS</span><code>src/proxy.ts</code><span>TypeScript</span></div>
+                <pre className="setup-code setup-proxy-code">{integrationSnippet}</pre>
+                <p className="setup-tip"><span aria-hidden="true">ⓘ</span> Install the <code>siteshield</code> package first. The example starts in monitor mode so you can validate events before enforcing policy.</p>
+                <div className="setup-panel-footer">
+                  <button type="button" className="button button-secondary" onClick={() => setSetupTab("env")}><span aria-hidden="true">←</span> Back to environment</button>
+                  <span>Setup snippets are ready to copy</span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </section>
