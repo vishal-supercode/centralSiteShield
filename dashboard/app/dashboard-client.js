@@ -115,7 +115,7 @@ function downloadSiteEventsCsv(events, siteName, siteId) {
     columns.map(([heading]) => escapeCsv(heading)).join(","),
     ...events.map((event) =>
       columns
-        .map(([, getValue]) => {
+        .map(([heading, getValue]) => {
           const value = getValue(event);
           if (heading === "Time") {
             const date = new Date(value);
@@ -250,7 +250,9 @@ export default function DashboardClient({
               disabled={siteFilter === "all" || !sites.some((site) => site.id === siteFilter)}
               title={siteFilter === "all" ? "Select an individual site to export its events." : "Download this site's events as CSV"}
             >
-              ↓ Download CSV
+              {siteFilter === "all" || !sites.some((site) => site.id === siteFilter)
+                ? "⊘ Download CSV"
+                : "↓ Download CSV"}
             </button>
             <select
               className="site-select"
