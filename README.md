@@ -1,10 +1,14 @@
-# SiteShield Central API — Phase B
+# SiteShield Central API
 
-This is a separate Node.js service from the public `siteshield` npm package and the `demoSite` application. It receives security-event telemetry, throttles per-site batch submissions through Redis, and stores durable logs in PostgreSQL. Event IDs are unique in PostgreSQL, so retransmitted batches do not create duplicate rows. Client IPs are transformed to a keyed SHA-256 digest before persistence.
+The central API is separate from the public `siteshield` npm package and customer Next.js projects. The package evaluates requests locally, then asynchronously submits restricted/monitor events here. This service authenticates site keys, throttles ingestion with Redis, hashes source IPs, and stores durable events in PostgreSQL. The dashboard reads it server-side.
+
+```text
+customer Next.js proxy -> POST /v1/events/batch -> central API -> Redis (ingestion limits)
+                                                            `-> PostgreSQL (durable events)
+dashboard server-side admin calls -------------------------^
+```
 
 ## Local setup
-
-Install PostgreSQL and Redis locally, create the database named in `.env`, then run:
 
 ```powershell
 npm install
@@ -12,38 +16,31 @@ npm run migrate
 npm run dev
 ```
 
-In another terminal, start the dashboard at `http://127.0.0.1:3001`:
+Start the dashboard separately with `npm install --prefix dashboard` and `npm run dev:dashboard`; it runs at `http://127.0.0.1:3001`. Local `.env` files are ignored by Git. Hosted services should use `HOST=0.0.0.0`, HTTPS, managed secrets, managed PostgreSQL, and a TLS Redis URL such as Upstash `rediss://...`.
 
-```powershell
-npm install --prefix dashboard
-npm run dev:dashboard
-```
-
-Dashboard API URL, credentials, and basic-auth password are in `dashboard/.env.local` (ignored by Git). The token must match the central API's `SITESHIELD_ADMIN_TOKEN`; keep the dashboard password separate. The UI lists sites and latest events and filters reports by site. API calls are server-side, so the token is not sent to browser code. Basic authentication is an MVP access gate only; use HTTPS and team SSO/identity management for deployment.
-
-The service binds to `127.0.0.1:4000` by default. `.env` has local-development-only values and is git-ignored. Replace both secrets before deployment. `EVENT_IP_HASH_SECRET` must be at least 32 characters and should remain stable if hashes need to correlate across restarts. A deployed service also needs HTTPS, managed secrets, and managed/private database and Redis endpoints; don't expose this local configuration directly to the internet.
+Required API variables are `DATABASE_URL`, `REDIS_URL`, `SITESHIELD_ADMIN_TOKEN`, and an `EVENT_IP_HASH_SECRET` of at least 32 characters. `EVENT_BATCH_MAX` limits events per batch, `EVENT_BODY_LIMIT_BYTES` caps the request body, and `EVENT_RATE_LIMIT_PER_MINUTE` limits batch submissions per site per Redis minute bucket. `LOG_RETENTION_DAYS` is reserved for a future cleanup worker and is not currently enforced.
 
 ## Endpoints
 
 | Endpoint | Authentication | Purpose |
 | --- | --- | --- |
-| `GET /health` | None | Liveness |
+| `GET /health` | None | Liveness check |
 | `POST /v1/sites` | Admin bearer token | Register a site; returns its site key once |
-| `POST /v1/events/batch` | `X-SiteShield-Key` | Batch telemetry from newer package reporter |
-| `POST /v1/events` | `X-SiteShield-Key` | Single-event compatibility for the older package reporter |
-| `GET /v1/sites` | Admin bearer token | List sites without exposing site keys |
-| `GET /v1/events` | Admin bearer token | Read recent events for the dashboard |
-| `DELETE /v1/sites/:siteId/events` | Admin bearer token | Delete all event logs for one site |
-| `DELETE /v1/sites/:siteId` | Admin bearer token | Delete a site and its event logs |
+| `GET /v1/sites` | Admin bearer token | List sites without keys |
+| `POST /v1/events/batch` | `X-SiteShield-Key` | Receive batched telemetry |
+| `POST /v1/events` | `X-SiteShield-Key` | Single-event compatibility endpoint |
+| `GET /v1/events` | Admin bearer token | Read the latest events |
+| `DELETE /v1/sites/:siteId/events` | Admin bearer token | Delete one site's event logs |
+| `DELETE /v1/sites/:siteId` | Admin bearer token | Delete a site and cascade its event logs |
 
-The batch reporter sends `{ "events": [...] }`. The request rate setting counts HTTP batch requests per site per 60-second Redis bucket—not individual events. `EVENT_BATCH_MAX` limits events per batch and `EVENT_BODY_LIMIT_BYTES` caps request size. PostgreSQL handles idempotency through the event UUID primary key. Redis is used for ephemeral ingestion limits; PostgreSQL is the durable event store.
+Event UUIDs provide idempotency. IPs are keyed-hashed before persistence. Redis is temporary state; PostgreSQL is the durable source of dashboard events.
 
-The npm package only has a bounded transient in-memory telemetry queue. It does not persist logs permanently. Its batch reporter must be configured to send to this separately hosted API.
+## Dashboard and deployment
 
-## Configuration notes
+The `dashboard/` app provides site registration, one-time setup instructions, event tabs (`All`, `Blocked`, `Rate limited`, `Monitor`), site filtering, cache-busted refresh from the central API, copy buttons, and confirmed per-site log/site deletion. It uses Basic Authentication as an MVP access gate; it is not team identity management and has no application session expiry.
 
-`.env.example` lists all API variables. `LOG_RETENTION_DAYS` is reserved for a retention worker and is not active yet. The API uses one bearer token; the dashboard currently uses Basic Authentication, not team-user accounts or SSO.
+Deploy this API as a Node service (for example Render) and `dashboard/` as a separate Next.js service (for example Vercel). Configure the dashboard with the central API URL, the same admin token, and a separate dashboard password. Redeploy after changing provider environment variables.
 
-## Verification and scope
+## Verification
 
-Run `npm test`. Tests use memory stores and verify registration, batch validation, site-key authentication, cross-site rejection, request limits, IP hashing, and duplicate handling. Live Redis/PostgreSQL integration still requires the services to be available. The dashboard UI is an initial operations view, not a full policy-management console. Hosted deployment and automated log cleanup remain future work.
+Run `npm test`. Tests cover registration, site-key authentication, validation, limits, IP hashing, duplicate handling, and deletion. Live Redis/PostgreSQL integration requires those services to be available.
