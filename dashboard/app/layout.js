@@ -1,7 +1,11 @@
-import './globals.css';
+import "./globals.css";
+import SiteShell from "./site-shell";
 
-export const metadata = { title: 'SiteShield | Security reports', description: 'SiteShield security events dashboard' };
+export const metadata = {
+  title: "SiteShield | Central console",
+  description: "SiteShield security dashboard and access controls",
+};
 
 export default function RootLayout({ children }) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body><SiteShell>{children}</SiteShell></body></html>;
 }

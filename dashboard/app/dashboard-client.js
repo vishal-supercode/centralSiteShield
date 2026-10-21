@@ -101,6 +101,8 @@ export default function DashboardClient({
   initialSites,
   initialEvents,
   initialSiteFilter = "all",
+  showEvents = true,
+  showSites = true,
 }) {
   const [sites, setSites] = useState(initialSites);
   const [events, setEvents] = useState(initialEvents);
@@ -180,7 +182,7 @@ export default function DashboardClient({
           ✓ {notice}
         </div>
       )}
-      <section className="toolbar-section">
+      {showEvents && <section className="toolbar-section">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Activity</p>
@@ -271,8 +273,8 @@ export default function DashboardClient({
             </table>
           </div>
         )}
-      </section>
-      <section>
+      </section>}
+      {showSites && <section>
         <div className="section-heading">
           <div>
             <p className="eyebrow">Configuration</p>
@@ -316,7 +318,7 @@ export default function DashboardClient({
             ))}
           </div>
         )}
-      </section>
+      </section>}
     </>
   );
 }
