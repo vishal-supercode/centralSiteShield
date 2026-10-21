@@ -135,7 +135,6 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
       {result && (
         <div className="setup-result setup-workspace" aria-live="polite">
           <div className="setup-success-banner">
-            <span className="success-mark" aria-hidden="true">✓</span>
             <div>
               <p className="eyebrow">Registration successful</p>
               <h3>Your site is ready to configure</h3>
@@ -150,7 +149,6 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
                 <h4>Site key</h4>
                 <p>Keep this private. It belongs in server-side environment variables only.</p>
               </div>
-              <span className="setup-lock" aria-hidden="true">⌑</span>
             </div>
             <code className="secret-key">{result.apiKey}</code>
             <div className="setup-key-actions">
@@ -213,7 +211,7 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
                   <CopyButton value={envSnippet} label="Copy values" />
                 </div>
                 <pre className="setup-code">{envSnippet}</pre>
-                <p className="setup-tip"><span aria-hidden="true">ⓘ</span> Do not prefix these variables with <code>NEXT_PUBLIC_</code> or commit your <code>.env</code> file.</p>
+                <p className="setup-tip"><span aria-hidden="true">i</span> Do not prefix these variables with <code>NEXT_PUBLIC_</code> or commit your <code>.env</code> file.</p>
                 <div className="setup-panel-footer">
                   <span>Environment configured?</span>
                   <button type="button" className="button button-primary" onClick={() => setSetupTab("proxy")}>Next: proxy setup <span aria-hidden="true">→</span></button>
@@ -230,7 +228,7 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
                 </div>
                 <div className="setup-file-label"><span className="setup-file-icon" aria-hidden="true">TS</span><code>src/proxy.ts</code><span>TypeScript</span></div>
                 <pre className="setup-code setup-proxy-code">{integrationSnippet}</pre>
-                <p className="setup-tip"><span aria-hidden="true">ⓘ</span> Install the <code>siteshield</code> package first. The example starts in monitor mode so you can validate events before enforcing policy.</p>
+                <p className="setup-tip"><span aria-hidden="true">i</span> Install the <code>npm install siteshield</code> package first. The example starts in monitor mode so you can validate events before enforcing policy.</p>
                 <div className="setup-panel-footer">
                   <button type="button" className="button button-secondary" onClick={() => setSetupTab("env")}><span aria-hidden="true">←</span> Back to environment</button>
                   <span>Setup snippets are ready to copy</span>

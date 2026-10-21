@@ -30,7 +30,7 @@ export function CopyButton({ value, label = "Copy" }) {
       onClick={copy}
     >
       {state === "copied"
-        ? "✓ Copied"
+        ? "Copied"
         : state === "failed"
           ? "Copy failed"
           : label}
@@ -222,7 +222,7 @@ export default function DashboardClient({
     <>
       {notice && (
         <div className="toast" role="status">
-          ✓ {notice}
+          {notice}
         </div>
       )}
       {showEvents && <section className="toolbar-section">
