@@ -117,7 +117,7 @@ function downloadSiteEventsCsv(events, siteName, siteId) {
       columns
         .map(([, getValue]) => {
           const value = getValue(event);
-          if (value === event.timestamp) {
+          if (heading === "Time") {
             const date = new Date(value);
             return escapeCsv(Number.isNaN(date.getTime()) ? value : date.toISOString());
           }
@@ -126,7 +126,7 @@ function downloadSiteEventsCsv(events, siteName, siteId) {
         .join(","),
     ),
   ];
-  const blob = new Blob(["\\uFEFF", rows.join("\\r\\n")], {
+  const blob = new Blob(["\uFEFF", rows.join("\r\n")], {
     type: "text/csv;charset=utf-8;",
   });
   const url = URL.createObjectURL(blob);
