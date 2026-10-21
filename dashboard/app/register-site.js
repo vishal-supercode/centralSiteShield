@@ -38,7 +38,7 @@ export default function RegisterSite() {
   }
 
   const envSnippet = result
-    ? `SITESHIELD_API_URL=${result.apiUrl}\nSITESHIELD_SITE_KEY=${result.apiKey}`
+    ? `SITESHIELD_API_URL=${result.apiUrl}\nSITESHIELD_SITE_KEY=${result.apiKey}\n\n# Optional but recommended for production shared rate limits\nUPSTASH_REDIS_REST_URL=https://your-database.upstash.io\nUPSTASH_REDIS_REST_TOKEN=your-upstash-rest-token`
     : "";
   const ipResolver = `  // Local development uses loopback; production reads the client IP from the hosting proxy.
   getClientIp: (request) => {
@@ -51,6 +51,7 @@ export default function RegisterSite() {
     ? `import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 import { createGooglebotVerifier } from 'siteshield/crawlers';
 import { createApiIpListProvider, createBatchApiEventReporter, createNextShield } from 'siteshield/next';
+import { createUpstashCounterStore } from 'siteshield/counters';
 
 const reporter = createBatchApiEventReporter({
   apiUrl: process.env.SITESHIELD_API_URL!,
@@ -62,13 +63,16 @@ const ipListProvider = createApiIpListProvider(
   process.env.SITESHIELD_API_URL!,
   process.env.SITESHIELD_SITE_KEY!,
 );
+const counterStore = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  ? createUpstashCounterStore(process.env.UPSTASH_REDIS_REST_URL, process.env.UPSTASH_REDIS_REST_TOKEN, { prefix: 'siteshield:${result.site.id}:' })
+  : undefined;
 
 const shield = createNextShield({
   siteId: '${result.site.id}',
   policy: {
     mode: 'monitor',
-    maxRequests: 30,
-    windowMs: 60_000,
+    maxRequests: 50,
+    windowMs: 30_000,
     // Only verified Google crawlers get the public GET/HEAD exemption.
     // Login, admin, and mutation requests remain protected.
     trustedCrawler: createGooglebotVerifier(),
@@ -76,6 +80,7 @@ const shield = createNextShield({
 ${ipResolver}
   eventReporter: reporter,
   ipListProvider,
+  counterStore,
 });
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
