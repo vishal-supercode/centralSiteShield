@@ -31,6 +31,28 @@ button:disabled { opacity: .6; cursor: wait; }
 .section-heading h2 { margin: 0; }
 .muted { color: var(--muted); }
 .site-select { min-height: 40px; padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: var(--ink); font: inherit; }
+.ip-manager { border-color: #cbd5e1; }
+.ip-manager .section-heading { margin-bottom: 18px; }
+.ip-manager h2 { margin-bottom: 5px; }
+.ip-rule-form { padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; }
+.ip-rule-form label { display: block; margin-bottom: 8px; font-weight: 700; }
+.ip-rule-controls { display: flex; flex-wrap: wrap; gap: 9px; }
+.ip-rule-controls input { flex: 1 1 220px; min-width: 0; min-height: 40px; padding: 8px 11px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: var(--ink); font: inherit; }
+.ip-rule-form .muted { margin: 9px 0 0; font-size: .86rem; }
+.ip-rule-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.ip-rule-list { min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: 10px; }
+.ip-rule-list-allow { background: #f0fdf4; border-color: #bbf7d0; }
+.ip-rule-list-block { background: #fff7f7; border-color: #fecaca; }
+.ip-rule-list-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ip-rule-list-heading h3 { margin: 0; }
+.ip-rule-list-heading > span { min-width: 25px; padding: 3px 7px; border-radius: 999px; background: white; text-align: center; font-weight: 700; }
+.ip-rule-list ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.ip-rule-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px; border: 1px solid rgb(148 163 184 / 30%); border-radius: 8px; background: white; }
+.ip-rule-list li code { flex: 1 1 100px; overflow-wrap: anywhere; }
+.ip-rule-source { color: var(--muted); font-size: .76rem; }
+.policy-refresh-note { margin: 14px 0 0; font-size: .85rem; }
+.inline-success { color: #166534; font-size: .9rem; font-weight: 650; }
+@media (max-width: 720px) { .ip-rule-columns { grid-template-columns: 1fr; } .ip-rule-controls > button { flex: 1 1 100%; } }
 .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
 .tab { display: inline-flex; align-items: center; gap: 8px; padding: 10px 13px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font-weight: 650; }
 .tab:hover, .tab.active { color: var(--blue); border-bottom-color: var(--blue); }

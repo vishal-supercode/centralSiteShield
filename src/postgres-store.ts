@@ -1,7 +1,7 @@
 import { randomBytes, createHash } from "node:crypto";
 import type { Pool } from "pg";
 import type { SecurityEvent } from "./contracts.js";
-import type { EventStore, Site } from "./store.js";
+import { normalizeIp, type EventStore, type IpRule, type IpRuleType, type Site } from "./store.js";
 
 const hashKey = (key: string) => createHash("sha256").update(key).digest("hex");
 export class PostgresEventStore implements EventStore {
@@ -28,15 +28,50 @@ export class PostgresEventStore implements EventStore {
     );
     return result.rows.map(mapSite);
   }
+  async listIpRules(siteId: string) {
+    const result = await this.pool.query(
+      "SELECT id,site_id,ip::text,type,source,created_at FROM site_ip_rules WHERE site_id=$1 ORDER BY created_at ASC",
+      [siteId],
+    );
+    return result.rows.map(mapIpRule);
+  }
+  async upsertIpRule(siteId: string, ip: string, type: IpRuleType) {
+    ip = normalizeIp(ip);
+    const result = await this.pool.query(
+      `INSERT INTO site_ip_rules (site_id,ip,type,source) VALUES ($1,$2::inet,$3,'manual')
+       ON CONFLICT (site_id,ip) DO UPDATE SET type=EXCLUDED.type,source='manual',created_at=now()
+       RETURNING id,site_id,ip::text,type,source,created_at`,
+      [siteId, ip, type],
+    );
+    return result.rows[0] ? mapIpRule(result.rows[0]) : undefined;
+  }
+  async deleteIpRule(siteId: string, ruleId: string) {
+    const result = await this.pool.query(
+      "DELETE FROM site_ip_rules WHERE site_id=$1 AND id=$2",
+      [siteId, ruleId],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+  async autoBlockIps(siteId: string, ips: string[]) {
+    for (const rawIp of ips) {
+      const ip = normalizeIp(rawIp);
+      await this.pool.query(
+        `INSERT INTO site_ip_rules (site_id,ip,type,source) VALUES ($1,$2::inet,'block','automatic')
+         ON CONFLICT (site_id,ip) DO NOTHING`,
+        [siteId, ip],
+      );
+    }
+  }
   async saveEvents(events: SecurityEvent[]) {
     const client = await this.pool.connect();
     let accepted = 0;
+    const acceptedEventIds: string[] = [];
     try {
       await client.query("BEGIN");
       for (const event of events) {
         const result = await client.query(
           `INSERT INTO security_events (id,site_id,occurred_at,decision,score,reasons,request,counters)
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING RETURNING id`,
           [
             event.id,
             event.siteId,
@@ -49,9 +84,10 @@ export class PostgresEventStore implements EventStore {
           ],
         );
         accepted += result.rowCount ?? 0;
+        if (result.rows[0]?.id) acceptedEventIds.push(String(result.rows[0].id));
       }
       await client.query("COMMIT");
-      return { accepted, duplicates: events.length - accepted };
+      return { accepted, duplicates: events.length - accepted, acceptedEventIds };
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;
@@ -96,6 +132,16 @@ function mapSite(row: Record<string, unknown>): Site {
     name: String(row.name),
     origin: String(row.origin),
     apiKeyHash: String(row.api_key_hash),
+    createdAt: new Date(String(row.created_at)).toISOString(),
+  };
+}
+function mapIpRule(row: Record<string, unknown>): IpRule {
+  return {
+    id: String(row.id),
+    siteId: String(row.site_id),
+    ip: String(row.ip),
+    type: String(row.type) as IpRuleType,
+    source: String(row.source) as IpRule["source"],
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }

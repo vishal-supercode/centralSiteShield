@@ -17,6 +17,7 @@
     "express": "^5.1.0",
     "pg": "^8.13.1",
     "redis": "^4.7.0",
+    "siteshield": "^0.1.6",
     "zod": "^3.24.1"
   },
   "devDependencies": {

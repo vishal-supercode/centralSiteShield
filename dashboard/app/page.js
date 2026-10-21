@@ -1,5 +1,6 @@
 import RegisterSite from "./register-site";
 import DashboardClient from "./dashboard-client";
+import IpListManager from "./ip-list-manager";
 
 const apiUrl = process.env.SITESHIELD_API_URL || "http://127.0.0.1:4000";
 const token = process.env.SITESHIELD_ADMIN_TOKEN;
@@ -59,10 +60,13 @@ export default async function DashboardPage({ searchParams }) {
         initialEvents={events}
         initialSiteFilter={siteId || "all"}
       />
+      <IpListManager sites={sites} initialSiteId={siteId} />
       <footer>
         <p>
-          Source IP addresses are stored as keyed hashes. Counts summarize only
-          the latest 100 events, not lifetime totals.
+          Event source IPs are stored as keyed hashes. IPs explicitly added to
+          an allow/block rule are stored as readable addresses so they can be
+          matched against requests. Counts summarize only the latest 100
+          events, not lifetime totals.
         </p>
       </footer>
     </main>

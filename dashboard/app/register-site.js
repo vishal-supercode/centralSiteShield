@@ -51,7 +51,7 @@ export default function RegisterSite() {
   const integrationSnippet = result
     ? `import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 import { createGooglebotVerifier } from 'siteshield/crawlers';
-import { createBatchApiEventReporter, createNextShield } from 'siteshield/next';
+import { createApiIpListProvider, createBatchApiEventReporter, createNextShield } from 'siteshield/next';
 
 const reporter = createBatchApiEventReporter({
   apiUrl: process.env.SITESHIELD_API_URL!,
@@ -59,6 +59,10 @@ const reporter = createBatchApiEventReporter({
   batchSize: 20,
   maxQueueSize: 200,
 });
+const ipListProvider = createApiIpListProvider(
+  process.env.SITESHIELD_API_URL!,
+  process.env.SITESHIELD_SITE_KEY!,
+);
 
 const shield = createNextShield({
   siteId: '${result.site.id}',
@@ -72,6 +76,7 @@ const shield = createNextShield({
   },
 ${ipResolver}
   eventReporter: reporter,
+  ipListProvider,
 });
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {

@@ -245,3 +245,39 @@ test("admin can delete one site’s logs or delete the site and cascade its even
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
+
+test("blocked events create persistent IP rules and admins can manage rules", async () => {
+  const store = new MemoryEventStore();
+  const app = createApp({ store, limiter: new MemoryIngestionLimiter(100), adminToken: "admin-test", ipHashSecret: "test-secret-at-least-32-characters-long", maxBatch: 10, bodyLimitBytes: 100_000 });
+  const { server, base } = await listen(app);
+  try {
+    const created = await store.registerSite({ name: "Rules", origin: "https://rules.example" });
+    const telemetryHeaders = { "content-type": "application/json", "x-siteshield-key": created.apiKey };
+    const report = await fetch(`${base}/v1/events`, { method: "POST", headers: telemetryHeaders, body: JSON.stringify(event(created.site.id, "00000000-0000-4000-8000-000000000099")) });
+    assert.equal(report.status, 202);
+    const policy = await fetch(`${base}/v1/policy`, { headers: { "x-siteshield-key": created.apiKey } });
+    assert.deepEqual(await policy.json(), { allow: [], block: ["203.0.113.4"] });
+    const listed = await fetch(`${base}/v1/sites/${created.site.id}/ip-rules`, { headers: auth });
+    const rules = (await listed.json()) as { rules: Array<{ id: string; source: string; type: string }> };
+    assert.equal(rules.rules[0].source, "automatic");
+    assert.equal(rules.rules[0].type, "block");
+
+    const allow = await fetch(`${base}/v1/sites/${created.site.id}/ip-rules`, { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ ip: "203.0.113.4", type: "allow" }) });
+    assert.equal(allow.status, 201);
+    const allowPolicy = await fetch(`${base}/v1/policy`, { headers: { "x-siteshield-key": created.apiKey } });
+    assert.deepEqual(await allowPolicy.json(), { allow: ["203.0.113.4"], block: [] });
+    const { rule } = await allow.json() as { rule: { id: string } };
+    const deleted = await fetch(`${base}/v1/sites/${created.site.id}/ip-rules/${rule.id}`, { method: "DELETE", headers: auth });
+    assert.equal(deleted.status, 200);
+    const emptyPolicy = await fetch(`${base}/v1/policy`, { headers: { "x-siteshield-key": created.apiKey } });
+    assert.deepEqual(await emptyPolicy.json(), { allow: [], block: [] });
+    const duplicateReport = await fetch(`${base}/v1/events`, { method: "POST", headers: telemetryHeaders, body: JSON.stringify(event(created.site.id, "00000000-0000-4000-8000-000000000099")) });
+    assert.deepEqual(await duplicateReport.json(), { accepted: 0, duplicates: 1, received: 1 });
+    const repairedPolicy = await fetch(`${base}/v1/policy`, { headers: { "x-siteshield-key": created.apiKey } });
+    assert.deepEqual(await repairedPolicy.json(), { allow: [], block: ["203.0.113.4"] });
+    const invalid = await fetch(`${base}/v1/sites/${created.site.id}/ip-rules`, { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ ip: "203.0.113.0/24", type: "block" }) });
+    assert.equal(invalid.status, 400);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});

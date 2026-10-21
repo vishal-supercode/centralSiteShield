@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const tabs = [
   ["all", "All events"],
@@ -109,6 +109,9 @@ export default function DashboardClient({
   const [notice, setNotice] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshedAt, setRefreshedAt] = useState(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => setHydrated(true), []);
   const filtered = useMemo(
     () =>
       events.filter(
@@ -244,7 +247,9 @@ export default function DashboardClient({
               <tbody>
                 {filtered.map((event) => (
                   <tr key={event.id}>
-                    <td>{new Date(event.timestamp).toLocaleString()}</td>
+                    <td>{hydrated
+                      ? new Date(event.timestamp).toLocaleString()
+                      : new Date(event.timestamp).toISOString()}</td>
                     <td>{names.get(event.siteId) || event.siteId}</td>
                     <td>
                       <span className={`badge badge-${event.decision}`}>
