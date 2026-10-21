@@ -1,7 +1,13 @@
 import { randomBytes, createHash } from "node:crypto";
 import type { Pool } from "pg";
 import type { SecurityEvent } from "./contracts.js";
-import { normalizeIp, type EventStore, type IpRule, type IpRuleType, type Site } from "./store.js";
+import {
+  normalizeIp,
+  type EventStore,
+  type IpRule,
+  type IpRuleType,
+  type Site,
+} from "./store.js";
 
 const hashKey = (key: string) => createHash("sha256").update(key).digest("hex");
 export class PostgresEventStore implements EventStore {
@@ -86,10 +92,15 @@ export class PostgresEventStore implements EventStore {
           ],
         );
         accepted += result.rowCount ?? 0;
-        if (result.rows[0]?.id) acceptedEventIds.push(String(result.rows[0].id));
+        if (result.rows[0]?.id)
+          acceptedEventIds.push(String(result.rows[0].id));
       }
       await client.query("COMMIT");
-      return { accepted, duplicates: events.length - accepted, acceptedEventIds };
+      return {
+        accepted,
+        duplicates: events.length - accepted,
+        acceptedEventIds,
+      };
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

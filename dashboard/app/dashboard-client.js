@@ -119,7 +119,9 @@ function downloadSiteEventsCsv(events, siteName, siteId) {
           const value = getValue(event);
           if (heading === "Time") {
             const date = new Date(value);
-            return escapeCsv(Number.isNaN(date.getTime()) ? value : date.toISOString());
+            return escapeCsv(
+              Number.isNaN(date.getTime()) ? value : date.toISOString(),
+            );
           }
           return escapeCsv(value);
         })
@@ -225,160 +227,182 @@ export default function DashboardClient({
           {notice}
         </div>
       )}
-      {showEvents && <section className="toolbar-section">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Activity</p>
-            <h2>Security events</h2>
-            {refreshedAt && (
-              <p className="muted refresh-time">
-                Last refreshed {new Date(refreshedAt).toLocaleTimeString()}
-              </p>
-            )}
-          </div>
-          <div className="toolbar-actions">
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() => {
-                const siteEvents = events.filter((event) => event.siteId === siteFilter);
-                const selectedSite = sites.find((site) => site.id === siteFilter);
-                if (selectedSite) {
-                  downloadSiteEventsCsv(siteEvents, selectedSite.name, selectedSite.id);
+      {showEvents && (
+        <section className="toolbar-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Activity</p>
+              <h2>Security events</h2>
+              {refreshedAt && (
+                <p className="muted refresh-time">
+                  Last refreshed {new Date(refreshedAt).toLocaleTimeString()}
+                </p>
+              )}
+            </div>
+            <div className="toolbar-actions">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => {
+                  const siteEvents = events.filter(
+                    (event) => event.siteId === siteFilter,
+                  );
+                  const selectedSite = sites.find(
+                    (site) => site.id === siteFilter,
+                  );
+                  if (selectedSite) {
+                    downloadSiteEventsCsv(
+                      siteEvents,
+                      selectedSite.name,
+                      selectedSite.id,
+                    );
+                  }
+                }}
+                disabled={
+                  siteFilter === "all" ||
+                  !sites.some((site) => site.id === siteFilter)
                 }
-              }}
-              disabled={siteFilter === "all" || !sites.some((site) => site.id === siteFilter)}
-              title={siteFilter === "all" ? "Select an individual site to export its events." : "Download this site's events as CSV"}
-            >
-              {siteFilter === "all" || !sites.some((site) => site.id === siteFilter)
-                ? "⊘ Download CSV"
-                : "↓ Download CSV"}
-            </button>
-            <select
-              className="site-select"
-              value={siteFilter}
-              onChange={(event) => setSiteFilter(event.target.value)}
-            >
-              <option value="all">All sites</option>
-              {sites.map((site) => (
-                <option key={site.id} value={site.id}>
-                  {site.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={refresh}
-              disabled={refreshing}
-            >
-              {refreshing ? "Refreshing…" : "↻ Refresh"}
-            </button>
-          </div>
-        </div>
-        <div className="tabs" role="tablist">
-          {tabs.map(([key, label]) => (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === key}
-              className={activeTab === key ? "tab active" : "tab"}
-              key={key}
-              onClick={() => setActiveTab(key)}
-            >
-              {label}
-              <span>{counts[key]}</span>
-            </button>
-          ))}
-        </div>
-        {filtered.length === 0 ? (
-          <p className="empty-state">No events match this filter.</p>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Site</th>
-                  <th>Decision</th>
-                  <th>Request</th>
-                  <th>Source hash</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((event) => (
-                  <tr key={event.id}>
-                    <td>{hydrated
-                      ? new Date(event.timestamp).toLocaleString()
-                      : new Date(event.timestamp).toISOString()}</td>
-                    <td>{names.get(event.siteId) || event.siteId}</td>
-                    <td>
-                      <span className={`badge badge-${event.decision}`}>
-                        {event.decision}
-                      </span>
-                    </td>
-                    <td>
-                      <code>
-                        {event.request.method} {event.request.path}
-                      </code>
-                    </td>
-                    <td>
-                      <code>{event.request.ip}</code>
-                    </td>
-                    <td>{event.reasons.join(", ") || "—"}</td>
-                  </tr>
+                title={
+                  siteFilter === "all"
+                    ? "Select an individual site to export its events."
+                    : "Download this site's events as CSV"
+                }
+              >
+                {siteFilter === "all" ||
+                !sites.some((site) => site.id === siteFilter)
+                  ? "⊘ Download CSV"
+                  : "↓ Download CSV"}
+              </button>
+              <select
+                className="site-select"
+                value={siteFilter}
+                onChange={(event) => setSiteFilter(event.target.value)}
+              >
+                <option value="all">All sites</option>
+                {sites.map((site) => (
+                  <option key={site.id} value={site.id}>
+                    {site.name}
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={refresh}
+                disabled={refreshing}
+              >
+                {refreshing ? "Refreshing…" : "↻ Refresh"}
+              </button>
+            </div>
           </div>
-        )}
-      </section>}
-      {showSites && <section>
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Configuration</p>
-            <h2>Registered sites</h2>
-          </div>
-          <span className="muted">{sites.length} connected</span>
-        </div>
-        {sites.length === 0 ? (
-          <p className="empty-state">No sites registered yet.</p>
-        ) : (
-          <div className="site-grid">
-            {sites.map((site) => (
-              <article className="site-card" key={site.id}>
-                <div className="site-card-top">
-                  <div>
-                    <h3>{site.name}</h3>
-                    <a href={site.origin} target="_blank" rel="noreferrer">
-                      {site.origin}
-                    </a>
-                  </div>
-                  <span className="site-dot" />
-                </div>
-                <p className="site-id-label">Site ID</p>
-                <div className="copy-line">
-                  <code>{site.id}</code>
-                  <CopyButton value={site.id} label="Copy ID" />
-                </div>
-                <div className="site-actions">
-                  <ConfirmAction
-                    site={site}
-                    action="logs"
-                    onComplete={complete}
-                  />
-                  <ConfirmAction
-                    site={site}
-                    action="site"
-                    onComplete={complete}
-                  />
-                </div>
-              </article>
+          <div className="tabs" role="tablist">
+            {tabs.map(([key, label]) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === key}
+                className={activeTab === key ? "tab active" : "tab"}
+                key={key}
+                onClick={() => setActiveTab(key)}
+              >
+                {label}
+                <span>{counts[key]}</span>
+              </button>
             ))}
           </div>
-        )}
-      </section>}
+          {filtered.length === 0 ? (
+            <p className="empty-state">No events match this filter.</p>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Site</th>
+                    <th>Decision</th>
+                    <th>Request</th>
+                    <th>Source hash</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((event) => (
+                    <tr key={event.id}>
+                      <td>
+                        {hydrated
+                          ? new Date(event.timestamp).toLocaleString()
+                          : new Date(event.timestamp).toISOString()}
+                      </td>
+                      <td>{names.get(event.siteId) || event.siteId}</td>
+                      <td>
+                        <span className={`badge badge-${event.decision}`}>
+                          {event.decision}
+                        </span>
+                      </td>
+                      <td>
+                        <code>
+                          {event.request.method} {event.request.path}
+                        </code>
+                      </td>
+                      <td>
+                        <code>{event.request.ip}</code>
+                      </td>
+                      <td>{event.reasons.join(", ") || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+      {showSites && (
+        <section>
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Configuration</p>
+              <h2>Registered sites</h2>
+            </div>
+            <span className="muted">{sites.length} connected</span>
+          </div>
+          {sites.length === 0 ? (
+            <p className="empty-state">No sites registered yet.</p>
+          ) : (
+            <div className="site-grid">
+              {sites.map((site) => (
+                <article className="site-card" key={site.id}>
+                  <div className="site-card-top">
+                    <div>
+                      <h3>{site.name}</h3>
+                      <a href={site.origin} target="_blank" rel="noreferrer">
+                        {site.origin}
+                      </a>
+                    </div>
+                    <span className="site-dot" />
+                  </div>
+                  <p className="site-id-label">Site ID</p>
+                  <div className="copy-line">
+                    <code>{site.id}</code>
+                    <CopyButton value={site.id} label="Copy ID" />
+                  </div>
+                  <div className="site-actions">
+                    <ConfirmAction
+                      site={site}
+                      action="logs"
+                      onComplete={complete}
+                    />
+                    <ConfirmAction
+                      site={site}
+                      action="site"
+                      onComplete={complete}
+                    />
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </>
   );
 }

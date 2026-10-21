@@ -1,4 +1,9 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
+import {
+  createHash,
+  randomBytes,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 import { isIP } from "node:net";
 import type { SecurityEvent } from "./contracts.js";
 
@@ -25,13 +30,21 @@ export interface EventStore {
   }): Promise<{ site: Site; apiKey: string }>;
   listSites(): Promise<Site[]>;
   listIpRules(siteId: string): Promise<IpRule[]>;
-  upsertIpRule(siteId: string, ip: string, type: IpRuleType): Promise<IpRule | undefined>;
+  upsertIpRule(
+    siteId: string,
+    ip: string,
+    type: IpRuleType,
+  ): Promise<IpRule | undefined>;
   deleteIpRule(siteId: string, ruleId: string): Promise<boolean>;
   autoBlockIps(siteId: string, ips: string[]): Promise<void>;
   findSiteByKey(key: string): Promise<Site | undefined>;
   saveEvents(
     events: SecurityEvent[],
-  ): Promise<{ accepted: number; duplicates: number; acceptedEventIds: string[] }>;
+  ): Promise<{
+    accepted: number;
+    duplicates: number;
+    acceptedEventIds: string[];
+  }>;
   listEvents(limit: number, siteId?: string): Promise<SecurityEvent[]>;
   deleteEvents(siteId: string): Promise<number>;
   deleteSite(siteId: string): Promise<boolean>;
@@ -70,16 +83,31 @@ export class MemoryEventStore implements EventStore {
     return [...this.sites];
   }
   async listIpRules(siteId: string) {
-    return [...this.ipRules.values()].filter((rule) => rule.siteId === siteId)
+    return [...this.ipRules.values()]
+      .filter((rule) => rule.siteId === siteId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
   async upsertIpRule(siteId: string, ip: string, type: IpRuleType) {
     ip = normalizeIp(ip);
     if (!this.sites.some((site) => site.id === siteId)) return undefined;
-    const existing = [...this.ipRules.values()].find((rule) => rule.siteId === siteId && rule.ip === ip);
+    const existing = [...this.ipRules.values()].find(
+      (rule) => rule.siteId === siteId && rule.ip === ip,
+    );
     const rule: IpRule = existing
-      ? { ...existing, type, source: "manual", createdAt: new Date().toISOString() }
-      : { id: randomUUID(), siteId, ip, type, source: "manual", createdAt: new Date().toISOString() };
+      ? {
+          ...existing,
+          type,
+          source: "manual",
+          createdAt: new Date().toISOString(),
+        }
+      : {
+          id: randomUUID(),
+          siteId,
+          ip,
+          type,
+          source: "manual",
+          createdAt: new Date().toISOString(),
+        };
     this.ipRules.set(rule.id, rule);
     return rule;
   }
@@ -90,8 +118,20 @@ export class MemoryEventStore implements EventStore {
   async autoBlockIps(siteId: string, ips: string[]) {
     for (const rawIp of ips) {
       const ip = normalizeIp(rawIp);
-      if ([...this.ipRules.values()].some((rule) => rule.siteId === siteId && rule.ip === ip)) continue;
-      const rule: IpRule = { id: randomUUID(), siteId, ip, type: "block", source: "automatic", createdAt: new Date().toISOString() };
+      if (
+        [...this.ipRules.values()].some(
+          (rule) => rule.siteId === siteId && rule.ip === ip,
+        )
+      )
+        continue;
+      const rule: IpRule = {
+        id: randomUUID(),
+        siteId,
+        ip,
+        type: "block",
+        source: "automatic",
+        createdAt: new Date().toISOString(),
+      };
       this.ipRules.set(rule.id, rule);
     }
   }

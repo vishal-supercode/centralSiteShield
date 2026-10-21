@@ -99,11 +99,13 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
           <p className="eyebrow">Site management</p>
           <h2>Register a site</h2>
           <p className="muted">
-            Connect an application to SiteShield and get the setup values for its
-            server-side environment and Next.js proxy.
+            Connect an application to SiteShield and get the setup values for
+            its server-side environment and Next.js proxy.
           </p>
         </div>
-        <span className="register-intro-icon" aria-hidden="true">＋</span>
+        <span className="register-intro-icon" aria-hidden="true">
+          ＋
+        </span>
       </div>
 
       <form onSubmit={submit} className="register-form">
@@ -125,12 +127,20 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
             placeholder="https://www.example.com"
           />
         </label>
-        <button type="submit" className="button button-primary register-submit" disabled={busy}>
+        <button
+          type="submit"
+          className="button button-primary register-submit"
+          disabled={busy}
+        >
           {busy ? "Registering…" : "Register site"}
         </button>
       </form>
 
-      {error && <p className="register-error" role="alert">{error}</p>}
+      {error && (
+        <p className="register-error" role="alert">
+          {error}
+        </p>
+      )}
 
       {result && (
         <div className="setup-result setup-workspace" aria-live="polite">
@@ -138,7 +148,9 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
             <div>
               <p className="eyebrow">Registration successful</p>
               <h3>Your site is ready to configure</h3>
-              <p className="muted">Follow the steps below to connect your application.</p>
+              <p className="muted">
+                Follow the steps below to connect your application.
+              </p>
             </div>
           </div>
 
@@ -147,13 +159,18 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
               <div>
                 <span className="setup-step">SECURITY KEY</span>
                 <h4>Site key</h4>
-                <p>Keep this private. It belongs in server-side environment variables only.</p>
+                <p>
+                  Keep this private. It belongs in server-side environment
+                  variables only.
+                </p>
               </div>
             </div>
             <code className="secret-key">{result.apiKey}</code>
             <div className="setup-key-actions">
               <CopyButton value={result.apiKey} label="Copy site key" />
-              <span className="setup-private-note">Private credential · shown once</span>
+              <span className="setup-private-note">
+                Private credential · shown once
+              </span>
             </div>
           </div>
 
@@ -173,7 +190,11 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
             <span className="setup-guide-count">2 steps</span>
           </div>
 
-          <div className="setup-tabs" role="tablist" aria-label="Site setup instructions">
+          <div
+            className="setup-tabs"
+            role="tablist"
+            aria-label="Site setup instructions"
+          >
             <button
               type="button"
               role="tab"
@@ -184,7 +205,10 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
               onClick={() => setSetupTab("env")}
             >
               <span className="setup-tab-number">1</span>
-              <span><strong>Environment</strong><small>Add your credentials</small></span>
+              <span>
+                <strong>Environment</strong>
+                <small>Add your credentials</small>
+              </span>
             </button>
             <button
               type="button"
@@ -192,29 +216,54 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
               id="setup-tab-proxy"
               aria-selected={setupTab === "proxy"}
               aria-controls="setup-panel"
-              className={setupTab === "proxy" ? "setup-tab active" : "setup-tab"}
+              className={
+                setupTab === "proxy" ? "setup-tab active" : "setup-tab"
+              }
               onClick={() => setSetupTab("proxy")}
             >
               <span className="setup-tab-number">2</span>
-              <span><strong>Next.js proxy</strong><small>Connect the protection layer</small></span>
+              <span>
+                <strong>Next.js proxy</strong>
+                <small>Connect the protection layer</small>
+              </span>
             </button>
           </div>
 
-          <div className="setup-instruction-panel" id="setup-panel" role="tabpanel" aria-labelledby={setupTab === "env" ? "setup-tab-env" : "setup-tab-proxy"}>
+          <div
+            className="setup-instruction-panel"
+            id="setup-panel"
+            role="tabpanel"
+            aria-labelledby={
+              setupTab === "env" ? "setup-tab-env" : "setup-tab-proxy"
+            }
+          >
             {setupTab === "env" ? (
               <>
                 <div className="setup-panel-heading">
                   <div>
                     <h4>Add environment values</h4>
-                    <p>Paste these into the server-side <code>.env</code> file at your project root.</p>
+                    <p>
+                      Paste these into the server-side <code>.env</code> file at
+                      your project root.
+                    </p>
                   </div>
                   <CopyButton value={envSnippet} label="Copy values" />
                 </div>
                 <pre className="setup-code">{envSnippet}</pre>
-                <p className="setup-tip"><span aria-hidden="true">i</span> Do not prefix these variables with <code>NEXT_PUBLIC_</code> or commit your <code>.env</code> file.</p>
+                <p className="setup-tip">
+                  <span aria-hidden="true">i</span> Do not prefix these
+                  variables with <code>NEXT_PUBLIC_</code> or commit your{" "}
+                  <code>.env</code> file.
+                </p>
                 <div className="setup-panel-footer">
                   <span>Environment configured?</span>
-                  <button type="button" className="button button-primary" onClick={() => setSetupTab("proxy")}>Next: proxy setup <span aria-hidden="true">→</span></button>
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => setSetupTab("proxy")}
+                  >
+                    Next: proxy setup <span aria-hidden="true">→</span>
+                  </button>
                 </div>
               </>
             ) : (
@@ -222,15 +271,40 @@ export const config = { matcher: ['/', '/api/:path*', '/login'] };`
                 <div className="setup-panel-heading">
                   <div>
                     <h4>Configure Next.js proxy</h4>
-                    <p>Create or replace <code>src/proxy.ts</code> in your Next.js project.</p>
+                    <p>
+                      Create or replace <code>src/proxy.ts</code> in your
+                      Next.js project.
+                    </p>
                   </div>
-                  <CopyButton value={integrationSnippet} label="Copy proxy.ts" />
+                  <CopyButton
+                    value={integrationSnippet}
+                    label="Copy proxy.ts"
+                  />
                 </div>
-                <div className="setup-file-label"><span className="setup-file-icon" aria-hidden="true">TS</span><code>src/proxy.ts</code><span>TypeScript</span></div>
-                <pre className="setup-code setup-proxy-code">{integrationSnippet}</pre>
-                <p className="setup-tip"><span aria-hidden="true">i</span> Install the <code>npm install siteshield</code> package first. The example starts in monitor mode so you can validate events before enforcing policy.</p>
+                <div className="setup-file-label">
+                  <span className="setup-file-icon" aria-hidden="true">
+                    TS
+                  </span>
+                  <code>src/proxy.ts</code>
+                  <span>TypeScript</span>
+                </div>
+                <pre className="setup-code setup-proxy-code">
+                  {integrationSnippet}
+                </pre>
+                <p className="setup-tip">
+                  <span aria-hidden="true">i</span> Install the{" "}
+                  <code>npm install siteshield</code> package first. The example
+                  starts in monitor mode so you can validate events before
+                  enforcing policy.
+                </p>
                 <div className="setup-panel-footer">
-                  <button type="button" className="button button-secondary" onClick={() => setSetupTab("env")}><span aria-hidden="true">←</span> Back to environment</button>
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => setSetupTab("env")}
+                  >
+                    <span aria-hidden="true">←</span> Back to environment
+                  </button>
                   <span>Setup snippets are ready to copy</span>
                 </div>
               </>
