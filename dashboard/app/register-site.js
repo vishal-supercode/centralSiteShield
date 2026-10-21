@@ -38,7 +38,7 @@ export default function RegisterSite() {
   }
 
   const envSnippet = result
-    ? `SITESHIELD_API_URL=${result.apiUrl}\nSITESHIELD_SITE_KEY=${result.apiKey}\n\n# Optional but recommended for production shared rate limits\nUPSTASH_REDIS_REST_URL=https://your-database.upstash.io\nUPSTASH_REDIS_REST_TOKEN=your-upstash-rest-token`
+    ? `SITESHIELD_API_URL=${result.apiUrl}\nSITESHIELD_SITE_KEY=${result.apiKey}\n\n# Optional but recommended for production shared rate limits\nUPSTASH_REDIS_REST_URL=https://your-database.upstash.io\nUPSTASH_REDIS_REST_TOKEN=your-upstash-rest-token\n\n#uncomment when in production\nNODE_ENV=production`
     : "";
   const ipResolver = `  // Local development uses loopback; production reads the client IP from the hosting proxy.
   getClientIp: (request) => {
