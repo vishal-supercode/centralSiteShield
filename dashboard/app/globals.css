@@ -21,7 +21,7 @@ code { overflow-wrap: anywhere; font-size: 0.78rem; }
 .register-form label { display: grid; gap: 6px; font-weight: 600; }
 input { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid #b8c2d1; border-radius: 5px; font: inherit; }
 button { font: inherit; cursor: pointer; }
-button:disabled { opacity: .6; cursor: wait; }
+button:disabled { opacity: .6; cursor: not-allowed; }
 .setup-result { margin-top: 20px; padding-top: 16px; border-top: 1px solid #dfe4ec; }
 .setup-result pre { max-width: 100%; overflow: auto; padding: 14px; border-radius: 6px; color: #e9f0ff; background: #172033; font-size: .85rem; }
 .secret-key { display: block; padding: 12px; border: 1px solid #e4c35a; border-radius: 5px; background: #fff9df; color: #172033; font-size: 1rem; }
@@ -115,3 +115,6 @@ body { background: #f5f7fb; }
   .mobile-status { display: flex; align-items: center; margin-left: auto; }
   .app-content > main { padding: 20px 14px 40px; }
 }
+
+/* Disabled controls should show a blocked cursor, not a loading cursor. */
+.button:disabled { cursor: not-allowed; }
